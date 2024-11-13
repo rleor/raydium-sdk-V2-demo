@@ -13,7 +13,7 @@ const sleep = (time: number) => {
 interface WatchedCoin {
     coin: string
     ca: string
-    solAmount: string
+    solAmount: number
 }
 
 interface NewsResp {
