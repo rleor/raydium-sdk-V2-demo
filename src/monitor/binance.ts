@@ -70,8 +70,8 @@ class BinanceNewsMonitor {
             if (!this.existingArticleIds.includes(article.id)) {
                 if (article.title.startsWith("Binance Will List") || article.title.startsWith("Binance Will Add")) {
                     for (const c of this.watchList) {
-                        if (!this.existingCoin.includes(c.coin)) {
-                            if (article.title.includes(`(${c.coin})`)) {
+                        if (article.title.includes(`(${c.coin})`)) {
+                            if (!this.existingCoin.includes(c.coin)) {
                                 // notification and buy
                                 console.log(`notification: new token ${c.coin} listed`);
                                 console.log(article.title);
@@ -79,9 +79,9 @@ class BinanceNewsMonitor {
                                 console.log(`buying ${c.coin}`);
 
                                 this.existingCoin.push(c.coin);
+                            } else {
+                                console.log(`coin ${c.coin} is already handled.`);
                             }
-                        } else {
-                            console.log(`coin ${c.coin} is already handled.`);
                         }
                     }
                 }
@@ -96,7 +96,7 @@ class BinanceNewsMonitor {
             try {
                 await this.check();
             } catch (e) {
-                console.log("check failed: ", e);
+                console.log("check failed: ");
             }
             await sleep(this.interval * 1000);
         }
