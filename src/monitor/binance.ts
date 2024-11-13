@@ -1,5 +1,6 @@
 import axios from 'axios'
 import watch from './watch.json';
+import {apiSwap} from '../api/swap';
 
 // https://github.com/fabius8/binanceAlert/blob/main/binanceAlert.py#L67
 
@@ -12,6 +13,7 @@ const sleep = (time: number) => {
 interface WatchedCoin {
     coin: string
     ca: string
+    solAmount: string
 }
 
 interface NewsResp {
@@ -76,7 +78,8 @@ class BinanceNewsMonitor {
                                 console.log(`notification: new token ${c.coin} listed`);
                                 console.log(article.title);
 
-                                console.log(`buying ${c.coin}`);
+                                console.log(`buying ${c.coin} sol: ${c.solAmount}`);
+                                // apiSwap(c.ca, );
 
                                 this.existingCoin.push(c.coin);
                             } else {

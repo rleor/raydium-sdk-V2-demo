@@ -1,10 +1,12 @@
 [
     {
         "coin": "ACT",
-        "ca": "1"
+        "ca": "GJAFwWjJ3vnTsrQVabjBVK2TYB1YtRCQXRDfDgUnpump",
+        "solAmount": 0.2
     },
     {
         "coin": "PNUT",
-        "ca": "2"
+        "ca": "2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump",
+        "solAmount": 0.2
     }
 ]

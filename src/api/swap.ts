@@ -30,10 +30,8 @@ interface SwapCompute {
   }
 }
 
-export const apiSwap = async () => {
+export const apiSwap = async (outputMint: string, solAmount: number) => {
   const inputMint = NATIVE_MINT.toBase58()
-  const outputMint = '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R' // RAY
-  const amount = 100
   const slippage = 0.5 // in percent, for this example, 0.5 means 0.5%
   const txVersion: string = 'V0' // or LEGACY
   const isV0Tx = txVersion === 'V0'
@@ -64,7 +62,7 @@ export const apiSwap = async () => {
   const { data: swapResponse } = await axios.get<SwapCompute>(
     `${
       API_URLS.SWAP_HOST
-    }/compute/swap-base-in?inputMint=${inputMint}&outputMint=${outputMint}&amount=${amount}&slippageBps=${
+    }/compute/swap-base-in?inputMint=${inputMint}&outputMint=${outputMint}&amount=${solAmount}&slippageBps=${
       slippage * 100
     }&txVersion=${txVersion}`
   )
