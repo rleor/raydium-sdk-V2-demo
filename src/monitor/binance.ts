@@ -106,7 +106,7 @@ class BinanceNewsMonitor {
 const main = async () => {
     const monitor = new BinanceNewsMonitor(60, watch);
     await monitor.init();
-    await monitor.loop;
+    await monitor.loop();
 };
 
 main();
