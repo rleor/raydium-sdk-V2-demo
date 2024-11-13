@@ -1,4 +1,5 @@
 import axios from 'axios'
+import watch from './watch.json';
 
 // https://github.com/fabius8/binanceAlert/blob/main/binanceAlert.py#L67
 
@@ -6,6 +7,11 @@ const sleep = (time: number) => {
     return new Promise(function(resolve) {
         setTimeout(resolve, time);
     });
+}
+
+interface WatchedCoin {
+    coin: string
+    ca: string
 }
 
 interface NewsResp {
@@ -27,9 +33,14 @@ interface Article {
 class BinanceNewsMonitor {
     private existingArticleIds: number[]
     private interval: number
-    constructor( interval: number, ) {
+    private watchList: WatchedCoin[]
+    constructor( interval: number, watch: WatchedCoin[]) {
         this.interval = interval
         this.existingArticleIds = [];
+        this.watchList = watch;
+        for (const w of watch) {
+            console.log(`watching ${w.coin}`);
+        }
     }
 
     private async getArticles(): Promise<Article[]> {
@@ -51,12 +62,18 @@ class BinanceNewsMonitor {
     }
 
     private async check() {
+        console.log("checking...");
         const articles = await this.getArticles();
         for (const article of articles) {
             if (!this.existingArticleIds.includes(article.id)) {
-                console.log("found new: " + article.title);
-                
-                // do something
+                if (article.title.startsWith("Binance Will List") || article.title.startsWith("Binance Will Add")) {
+                    for (const c of this.watchList) {
+                        if (article.title.includes(`(${c.coin})`)) {
+                            // notification and buy
+                            console.log(article.title);
+                        }
+                    }
+                }
 
                 this.existingArticleIds.push(article.id);
             }
@@ -76,7 +93,7 @@ class BinanceNewsMonitor {
 }
 
 const main = async () => {
-    const monitor = new BinanceNewsMonitor(60);
+    const monitor = new BinanceNewsMonitor(60, watch);
     await monitor.init();
     await monitor.loop;
 };
