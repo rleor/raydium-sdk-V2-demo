@@ -32,6 +32,7 @@ interface Article {
 }
 class BinanceNewsMonitor {
     private existingArticleIds: number[]
+    private existingCoin: string[]
     private interval: number
     private watchList: WatchedCoin[]
     constructor( interval: number, watch: WatchedCoin[]) {
@@ -68,9 +69,18 @@ class BinanceNewsMonitor {
             if (!this.existingArticleIds.includes(article.id)) {
                 if (article.title.startsWith("Binance Will List") || article.title.startsWith("Binance Will Add")) {
                     for (const c of this.watchList) {
-                        if (article.title.includes(`(${c.coin})`)) {
-                            // notification and buy
-                            console.log(article.title);
+                        if (!this.existingCoin.includes(c.coin)) {
+                            if (article.title.includes(`(${c.coin})`)) {
+                                // notification and buy
+                                console.log(`notification: new token ${c.coin} listed`);
+                                console.log(article.title);
+
+                                console.log(`buying ${c.coin}`);
+
+                                this.existingCoin.push(c.coin);
+                            }
+                        } else {
+                            console.log(`coin ${c.coin} is already handled.`);
                         }
                     }
                 }
