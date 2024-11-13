@@ -38,6 +38,7 @@ class BinanceNewsMonitor {
     constructor( interval: number, watch: WatchedCoin[]) {
         this.interval = interval
         this.existingArticleIds = [];
+        this.existingCoin = [];
         this.watchList = watch;
         for (const w of watch) {
             console.log(`watching ${w.coin}`);
