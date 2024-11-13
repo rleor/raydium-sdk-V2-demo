@@ -1,5 +1,6 @@
 import axios from 'axios'
 
+// https://github.com/fabius8/binanceAlert/blob/main/binanceAlert.py#L67
 const BINANCE_NEWS_URL = "https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&catalogId=48&pageNo=1&pageSize=20";
 const interval = 60 // seconds
 
