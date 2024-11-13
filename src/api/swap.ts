@@ -66,6 +66,7 @@ export const apiSwap = async (outputMint: string, solAmount: number) => {
       slippage * 100
     }&txVersion=${txVersion}`
   )
+  console.log("fee", data.data.default.h);
 
   const { data: swapTransactions } = await axios.post<{
     id: string
@@ -82,6 +83,7 @@ export const apiSwap = async (outputMint: string, solAmount: number) => {
     inputAccount: isInputSol ? undefined : inputTokenAcc?.toBase58(),
     outputAccount: isOutputSol ? undefined : outputTokenAcc?.toBase58(),
   })
+  console.log("tx len: ", swapTransactions.data.length);
 
   const allTxBuf = swapTransactions.data.map((tx) => Buffer.from(tx.transaction, 'base64'))
   const allTransactions = allTxBuf.map((txBuf) =>

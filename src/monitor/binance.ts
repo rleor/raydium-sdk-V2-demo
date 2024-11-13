@@ -79,7 +79,7 @@ class BinanceNewsMonitor {
                                 console.log(article.title);
 
                                 console.log(`buying ${c.coin} sol: ${c.solAmount}`);
-                                // apiSwap(c.ca, );
+                                await apiSwap(c.ca, c.solAmount);
 
                                 this.existingCoin.push(c.coin);
                             } else {
@@ -99,7 +99,7 @@ class BinanceNewsMonitor {
             try {
                 await this.check();
             } catch (e) {
-                console.log("check failed: ");
+                console.log("check failed: ", e);
             }
             await sleep(this.interval * 1000);
         }
