@@ -98,7 +98,7 @@ class BinanceNewsMonitor {
             } catch (e) {
                 console.log("check failed: ", e);
             }
-            sleep(this.interval * 1000);
+            await sleep(this.interval * 1000);
         }
     }
 }
