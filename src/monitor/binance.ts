@@ -1,8 +1,19 @@
 import axios from 'axios'
-import watch from './watch.json';
-import {apiSwap} from '../api/swap';
+import config from './config.json';
+import winston from 'winston';
+import {Sol} from './sol';
 
-// https://github.com/fabius8/binanceAlert/blob/main/binanceAlert.py#L67
+// TODO: test binance api ban rate
+// reference: https://github.com/fabius8/binanceAlert/blob/main/binanceAlert.py#L67
+
+const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.json(),
+    transports: [
+        new winston.transports.Console(),
+        new winston.transports.File({ filename: 'combined.log' }),
+    ],
+});
 
 const sleep = (time: number) => {
     return new Promise(function(resolve) {
@@ -10,12 +21,22 @@ const sleep = (time: number) => {
     });
 }
 
-interface WatchedCoin {
-    coin: string
+// --------------- configurations
+interface TokenInfo {
+    symbol: string
     ca: string
+    chain: string
+}
+interface Watch {
+    pk: string
+    coins: WatchCoin[]
+}
+interface WatchCoin {
+    symbol: string
     solAmount: number
 }
 
+//------------ binance response
 interface NewsResp {
     code: string
     message: string
@@ -33,20 +54,28 @@ interface Article {
     title: string
 }
 class BinanceNewsMonitor {
+    private tokenInfos: TokenInfo[]
     private existingArticleIds: number[]
     private existingCoin: string[]
     private interval: number
-    private watchList: WatchedCoin[]
-    constructor( interval: number, watch: WatchedCoin[]) {
+    private watch: Watch[]
+    private solApi: Sol
+
+    constructor(
+        interval: number, 
+        solEndpoint: string,
+        tokenInfo: TokenInfo[],
+        watch: Watch[],
+    ) {
         this.interval = interval
         this.existingArticleIds = [];
         this.existingCoin = [];
-        this.watchList = watch;
-        for (const w of watch) {
-            console.log(`watching ${w.coin}`);
-        }
+        this.tokenInfos = tokenInfo;
+        this.watch = watch;
+        this.solApi = new Sol(solEndpoint);
     }
 
+    // get latest news from binance api
     private async getArticles(): Promise<Article[]> {
         const BINANCE_NEWS_URL = "https://www.binance.com/bapi/composite/v1/public/cms/article/list/query?type=1&catalogId=48&pageNo=1&pageSize=20";
         const {data} = await axios.get<NewsResp>(BINANCE_NEWS_URL);
@@ -56,34 +85,49 @@ class BinanceNewsMonitor {
         return data.data.catalogs[0].articles;
     }
     
+    // load old news
     public async init() {
+        logger.info(`initializing current articles...`);
         const articles = await this.getArticles();
-        for (const artical of articles) {
-            if (!this.existingArticleIds.includes(artical.id)) {
-                this.existingArticleIds.push(artical.id);
+        for (const article of articles) {
+            if (!this.existingArticleIds.includes(article.id)) {
+                this.existingArticleIds.push(article.id);
+
+                logger.info(`article ${article.id} loaded`);
             }
         }
     }
 
     private async check() {
-        console.log("checking...");
+        logger.info("checking...");
+
         const articles = await this.getArticles();
         for (const article of articles) {
             if (!this.existingArticleIds.includes(article.id)) {
-                if (article.title.startsWith("Binance Will List") || article.title.startsWith("Binance Will Add")) {
-                    for (const c of this.watchList) {
-                        if (article.title.includes(`(${c.coin})`)) {
-                            if (!this.existingCoin.includes(c.coin)) {
-                                // notification and buy
-                                console.log(`notification: new token ${c.coin} listed`);
-                                console.log(article.title);
+                const titleUpper = article.title.toUpperCase();
+                if (titleUpper.startsWith("BINANCE WILL LIST") || titleUpper.startsWith("BINANCE WILL ADD")) {
+                    for (const tokenInfo of this.tokenInfos) { // exists in token infos
+                        const tokenInfoUpper = tokenInfo.symbol.toUpperCase();
+                        if (titleUpper.includes(`(${tokenInfoUpper})`)) { // exists in news
+                            if (!this.existingCoin.includes(tokenInfoUpper)) { // hasn't processed
+                                for (const user of this.watch) { // if user watches
+                                    for (const wc of user.coins) {
+                                        if (wc.symbol.toUpperCase() === tokenInfoUpper) {
+                                            logger.info(`buying ${tokenInfoUpper} ${tokenInfo.ca} sol: ${wc.solAmount}sol`);
+                                            try {
+                                                const txId = await this.solApi.buy(user.pk, tokenInfo.ca, wc.solAmount);
+                                                this.existingCoin.push(tokenInfo.symbol);
 
-                                console.log(`buying ${c.coin} sol: ${c.solAmount}`);
-                                await apiSwap(c.ca, c.solAmount);
-
-                                this.existingCoin.push(c.coin);
+                                                // TODO: notify
+                                            } catch (e) {
+                                                logger.info(`buy failed.`, e);
+                                                // TODO: notify
+                                            }
+                                        }
+                                    }
+                                }
                             } else {
-                                console.log(`coin ${c.coin} is already handled.`);
+                                logger.info(`coin ${tokenInfoUpper} is already processed.`);
                             }
                         }
                     }
@@ -96,18 +140,17 @@ class BinanceNewsMonitor {
 
     public async loop() {
         while(true) {
-            try {
-                await this.check();
-            } catch (e) {
-                console.log("check failed: ", e);
-            }
+            await this.check();
             await sleep(this.interval * 1000);
         }
     }
 }
 
 const main = async () => {
-    const monitor = new BinanceNewsMonitor(60, watch);
+    logger.info(`loading config...`);
+    logger.info(config);
+
+    const monitor = new BinanceNewsMonitor(config.interval, config.solEndpoint, config.coins, config.watch);
     await monitor.init();
     await monitor.loop();
 };

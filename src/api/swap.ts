@@ -1,7 +1,7 @@
-import { Transaction, VersionedTransaction, sendAndConfirmTransaction } from '@solana/web3.js'
+import { Connection , Keypair, Transaction, VersionedTransaction, sendAndConfirmTransaction } from '@solana/web3.js'
 import { NATIVE_MINT } from '@solana/spl-token'
 import axios from 'axios'
-import { connection, owner, fetchTokenAccountData } from '../config'
+// import { connection, owner, fetchTokenAccountData } from '../config'
 import { API_URLS } from '@raydium-io/raydium-sdk-v2'
 
 interface SwapCompute {
@@ -30,7 +30,7 @@ interface SwapCompute {
   }
 }
 
-export const apiSwap = async (outputMint: string, solAmount: number) => {
+export const apiSwap = async (connection: Connection, owner: Keypair, outputMint: string, solAmount: number): Promise<string> => {
   const inputMint = NATIVE_MINT.toBase58()
   const slippage = 0.5 // in percent, for this example, 0.5 means 0.5%
   const txVersion: string = 'V0' // or LEGACY
@@ -38,13 +38,13 @@ export const apiSwap = async (outputMint: string, solAmount: number) => {
 
   const [isInputSol, isOutputSol] = [inputMint === NATIVE_MINT.toBase58(), outputMint === NATIVE_MINT.toBase58()]
 
-  const { tokenAccounts } = await fetchTokenAccountData()
+  const { tokenAccounts } = await fetchTokenAccountData(connection, owner)
   const inputTokenAcc = tokenAccounts.find((a) => a.mint.toBase58() === inputMint)?.publicKey
   const outputTokenAcc = tokenAccounts.find((a) => a.mint.toBase58() === outputMint)?.publicKey
 
   if (!inputTokenAcc && !isInputSol) {
     console.error('do not have input token account')
-    return
+    throw new Error('do not have input token account');
   }
 
   // get statistical transaction fee from api
@@ -66,7 +66,6 @@ export const apiSwap = async (outputMint: string, solAmount: number) => {
       slippage * 100
     }&txVersion=${txVersion}`
   )
-  console.log("fee", data.data.default.h);
 
   const { data: swapTransactions } = await axios.post<{
     id: string
@@ -83,7 +82,6 @@ export const apiSwap = async (outputMint: string, solAmount: number) => {
     inputAccount: isInputSol ? undefined : inputTokenAcc?.toBase58(),
     outputAccount: isOutputSol ? undefined : outputTokenAcc?.toBase58(),
   })
-  console.log("tx len: ", swapTransactions.data.length);
 
   const allTxBuf = swapTransactions.data.map((tx) => Buffer.from(tx.transaction, 'base64'))
   const allTransactions = allTxBuf.map((txBuf) =>
@@ -93,6 +91,7 @@ export const apiSwap = async (outputMint: string, solAmount: number) => {
   console.log(`total ${allTransactions.length} transactions`, swapTransactions)
 
   let idx = 0
+  const txids: string[] = [];
   if (!isV0Tx) {
     for (const tx of allTransactions) {
       console.log(`${++idx} transaction sending...`)
@@ -100,6 +99,7 @@ export const apiSwap = async (outputMint: string, solAmount: number) => {
       transaction.sign(owner)
       const txId = await sendAndConfirmTransaction(connection, transaction, [owner], { skipPreflight: true })
       console.log(`${++idx} transaction confirmed, txId: ${txId}`)
+      txids.push(txId);
     }
   } else {
     for (const tx of allTransactions) {
@@ -120,7 +120,9 @@ export const apiSwap = async (outputMint: string, solAmount: number) => {
         'confirmed'
       )
       console.log(`${idx} transaction confirmed`)
+      txids.push(txId);
     }
   }
+  return txids.join(",");
 }
 // apiSwap()
