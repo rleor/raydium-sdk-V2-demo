@@ -1,20 +1,9 @@
-import axios from 'axios'
-import config from './config.json';
-import winston from 'winston';
+import axios from 'axios';
 import {Sol} from './sol';
 import {Telegram} from './tg';
+import {Logger} from 'winston';
 
-// TODO: test binance api ban rate
 // reference: https://github.com/fabius8/binanceAlert/blob/main/binanceAlert.py#L67
-
-const logger = winston.createLogger({
-    level: 'info',
-    format: winston.format.json(),
-    transports: [
-        new winston.transports.Console(),
-        new winston.transports.File({ filename: 'combined.log' }),
-    ],
-});
 
 const sleep = (time: number) => {
     return new Promise(function(resolve) {
@@ -55,7 +44,7 @@ interface Article {
     id: number
     title: string
 }
-class BinanceNewsMonitor {
+export class BinanceNewsMonitor {
     private tokenInfos: TokenInfo[]
     private existingArticleIds: number[]
     private existingCoin: string[]
@@ -63,14 +52,17 @@ class BinanceNewsMonitor {
     private watch: Watch[]
     private solApi: Sol
     private tgBot: Telegram
+    private logger: Logger
 
     constructor(
+        logger: Logger,
         interval: number, 
         solEndpoint: string,
         tokenInfo: TokenInfo[],
         watch: Watch[],
         telegramToken: string,
     ) {
+        this.logger = logger;
         this.interval = interval
         this.existingArticleIds = [];
         this.existingCoin = [];
@@ -92,19 +84,19 @@ class BinanceNewsMonitor {
     
     // load old news
     public async init() {
-        logger.info(`initializing current articles...`);
+        this.logger.info(`initializing current articles...`);
         const articles = await this.getArticles();
         for (const article of articles) {
             if (!this.existingArticleIds.includes(article.id)) {
                 this.existingArticleIds.push(article.id);
 
-                logger.info(`article ${article.id} loaded`);
+                this.logger.info(`article ${article.id} loaded`);
             }
         }
     }
 
     private async check() {
-        logger.info("checking...");
+        this.logger.info("checking...");
 
         const articles = await this.getArticles();
         for (const article of articles) {
@@ -118,7 +110,7 @@ class BinanceNewsMonitor {
                                 for (const user of this.watch) { // if user watches
                                     for (const wc of user.coins) {
                                         if (wc.symbol.toUpperCase() === tokenInfoUpper) {
-                                            logger.info(`buying ${tokenInfoUpper} ${tokenInfo.ca} sol: ${wc.solAmount}sol`);
+                                            this.logger.info(`buying ${tokenInfoUpper} ${tokenInfo.ca} sol: ${wc.solAmount}sol`);
                                             try {
                                                 const txId = await this.solApi.buy(user.pk, tokenInfo.ca, wc.solAmount);
                                                 this.existingCoin.push(tokenInfoUpper);
@@ -126,21 +118,21 @@ class BinanceNewsMonitor {
                                                 try {
                                                     this.tgBot.sendMessage(user.tgId, `buy ${tokenInfoUpper} ${tokenInfo.ca} sol: ${wc.solAmount}sol tx: ${txId} success`);
                                                 } catch (ee) {
-                                                    logger.error(`tg failed ${ee}`)
+                                                    this.logger.error(`tg failed ${ee}`)
                                                 }
                                             } catch (e) {
                                                 try {
                                                     this.tgBot.sendMessage(user.tgId, `failed to buy ${tokenInfoUpper} ${tokenInfo.ca} sol: ${wc.solAmount}sol ${e}`);
                                                 } catch (ee) {
-                                                    logger.error(`tg failed ${ee}`)
+                                                    this.logger.error(`tg failed ${ee}`)
                                                 }
-                                                logger.error("buy failed", e);
+                                                this.logger.error("buy failed", e);
                                             }
                                         }
                                     }
                                 }
                             } else {
-                                logger.info(`coin ${tokenInfoUpper} is already processed.`);
+                                this.logger.info(`coin ${tokenInfoUpper} is already processed.`);
                             }
                         }
                     }
@@ -156,26 +148,9 @@ class BinanceNewsMonitor {
             try {
                 await this.check();
             } catch (e) {
-                logger.error(`check error: ${e}`);
+                this.logger.error(`check error: ${e}`);
             }
             await sleep(this.interval * 1000);
         }
     }
 }
-
-const main = async () => {
-    logger.info(`loading config...`);
-    logger.info(config);
-
-    const monitor = new BinanceNewsMonitor(
-        config.interval, 
-        config.solEndpoint, 
-        config.coins, 
-        config.watch, 
-        config.telegramToken
-    );
-    await monitor.init();
-    await monitor.loop();
-};
-
-main();

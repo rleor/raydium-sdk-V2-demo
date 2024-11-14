@@ -8,3 +8,7 @@ src/config.ts
 src/test/**/*
 src/data/**/*
 src/monitor/config.json
+weagle
+dist
+config.json
+js/
