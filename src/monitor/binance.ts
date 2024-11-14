@@ -69,6 +69,7 @@ class BinanceNewsMonitor {
         solEndpoint: string,
         tokenInfo: TokenInfo[],
         watch: Watch[],
+        telegramToken: string,
     ) {
         this.interval = interval
         this.existingArticleIds = [];
@@ -76,7 +77,7 @@ class BinanceNewsMonitor {
         this.tokenInfos = tokenInfo;
         this.watch = watch;
         this.solApi = new Sol(solEndpoint);
-        this.tgBot = new Telegram();
+        this.tgBot = new Telegram(telegramToken);
     }
 
     // get latest news from binance api
@@ -125,13 +126,13 @@ class BinanceNewsMonitor {
                                                 try {
                                                     this.tgBot.sendMessage(user.tgId, `buy ${tokenInfoUpper} ${tokenInfo.ca} sol: ${wc.solAmount}sol tx: ${txId} success`);
                                                 } catch (ee) {
-                                                    // silent
+                                                    logger.error(`tg failed ${ee}`)
                                                 }
                                             } catch (e) {
                                                 try {
                                                     this.tgBot.sendMessage(user.tgId, `failed to buy ${tokenInfoUpper} ${tokenInfo.ca} sol: ${wc.solAmount}sol ${e}`);
                                                 } catch (ee) {
-                                                    // silent
+                                                    logger.error(`tg failed ${ee}`)
                                                 }
                                             }
                                         }
@@ -161,7 +162,13 @@ const main = async () => {
     logger.info(`loading config...`);
     logger.info(config);
 
-    const monitor = new BinanceNewsMonitor(config.interval, config.solEndpoint, config.coins, config.watch);
+    const monitor = new BinanceNewsMonitor(
+        config.interval, 
+        config.solEndpoint, 
+        config.coins, 
+        config.watch, 
+        config.telegramToken
+    );
     await monitor.init();
     await monitor.loop();
 };
