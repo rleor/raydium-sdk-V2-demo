@@ -14,7 +14,7 @@ export class Sol {
 
     public async buy(key: string, tokenCA: string, solAmount: number): Promise<string> {
         const owner = Keypair.fromSecretKey(bs58.decode(key))
-        const txId = await apiSwap(this.connection, owner, tokenCA, solAmount);
+        const txId = await apiSwap(this.connection, owner, tokenCA, solAmount * 1000000000);
         return txId;
     }
 }
