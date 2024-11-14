@@ -121,7 +121,7 @@ class BinanceNewsMonitor {
                                             logger.info(`buying ${tokenInfoUpper} ${tokenInfo.ca} sol: ${wc.solAmount}sol`);
                                             try {
                                                 const txId = await this.solApi.buy(user.pk, tokenInfo.ca, wc.solAmount);
-                                                this.existingCoin.push(tokenInfo.symbol);
+                                                this.existingCoin.push(tokenInfoUpper);
 
                                                 try {
                                                     this.tgBot.sendMessage(user.tgId, `buy ${tokenInfoUpper} ${tokenInfo.ca} sol: ${wc.solAmount}sol tx: ${txId} success`);
@@ -134,6 +134,7 @@ class BinanceNewsMonitor {
                                                 } catch (ee) {
                                                     logger.error(`tg failed ${ee}`)
                                                 }
+                                                logger.error("buy failed", e);
                                             }
                                         }
                                     }
