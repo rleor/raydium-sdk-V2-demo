@@ -153,7 +153,11 @@ class BinanceNewsMonitor {
 
     public async loop() {
         while(true) {
-            await this.check();
+            try {
+                await this.check();
+            } catch (e) {
+                logger.error(`check error: ${e}`);
+            }
             await sleep(this.interval * 1000);
         }
     }
