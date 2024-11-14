@@ -1,8 +1,7 @@
 import { Connection , Keypair, Transaction, VersionedTransaction, sendAndConfirmTransaction } from '@solana/web3.js'
-import { NATIVE_MINT } from '@solana/spl-token'
+import { NATIVE_MINT, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token'
 import axios from 'axios'
-import { /*connection, owner,*/ fetchTokenAccountData } from '../config'
-import { API_URLS } from '@raydium-io/raydium-sdk-v2'
+import { API_URLS, parseTokenAccountResp } from '@raydium-io/raydium-sdk-v2'
 
 interface SwapCompute {
   id: string
@@ -28,6 +27,21 @@ interface SwapCompute {
       feeAmount: string
     }[]
   }
+}
+
+export const fetchTokenAccountData = async (connection: Connection, owner: Keypair) => {
+  const solAccountResp = await connection.getAccountInfo(owner.publicKey)
+  const tokenAccountResp = await connection.getTokenAccountsByOwner(owner.publicKey, { programId: TOKEN_PROGRAM_ID })
+  const token2022Req = await connection.getTokenAccountsByOwner(owner.publicKey, { programId: TOKEN_2022_PROGRAM_ID })
+  const tokenAccountData = parseTokenAccountResp({
+    owner: owner.publicKey,
+    solAccountResp,
+    tokenAccountResp: {
+      context: tokenAccountResp.context,
+      value: [...tokenAccountResp.value, ...token2022Req.value],
+    },
+  })
+  return tokenAccountData
 }
 
 export const apiSwap = async (connection: Connection, owner: Keypair, outputMint: string, solAmount: number): Promise<string> => {
