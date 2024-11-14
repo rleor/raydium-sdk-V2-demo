@@ -2,6 +2,7 @@ import axios from 'axios'
 import config from './config.json';
 import winston from 'winston';
 import {Sol} from './sol';
+import {Telegram} from './tg';
 
 // TODO: test binance api ban rate
 // reference: https://github.com/fabius8/binanceAlert/blob/main/binanceAlert.py#L67
@@ -29,6 +30,7 @@ interface TokenInfo {
 }
 interface Watch {
     pk: string
+    tgId: string
     coins: WatchCoin[]
 }
 interface WatchCoin {
@@ -60,6 +62,7 @@ class BinanceNewsMonitor {
     private interval: number
     private watch: Watch[]
     private solApi: Sol
+    private tgBot: Telegram
 
     constructor(
         interval: number, 
@@ -73,6 +76,7 @@ class BinanceNewsMonitor {
         this.tokenInfos = tokenInfo;
         this.watch = watch;
         this.solApi = new Sol(solEndpoint);
+        this.tgBot = new Telegram();
     }
 
     // get latest news from binance api
@@ -118,10 +122,17 @@ class BinanceNewsMonitor {
                                                 const txId = await this.solApi.buy(user.pk, tokenInfo.ca, wc.solAmount);
                                                 this.existingCoin.push(tokenInfo.symbol);
 
-                                                // TODO: notify
+                                                try {
+                                                    this.tgBot.sendMessage(user.tgId, `buy ${tokenInfoUpper} ${tokenInfo.ca} sol: ${wc.solAmount}sol tx: ${txId} success`);
+                                                } catch (ee) {
+                                                    // silent
+                                                }
                                             } catch (e) {
-                                                logger.info(`buy failed.`, e);
-                                                // TODO: notify
+                                                try {
+                                                    this.tgBot.sendMessage(user.tgId, `failed to buy ${tokenInfoUpper} ${tokenInfo.ca} sol: ${wc.solAmount}sol ${e}`);
+                                                } catch (ee) {
+                                                    // silent
+                                                }
                                             }
                                         }
                                     }
