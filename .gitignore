@@ -8,7 +8,9 @@ src/config.ts
 src/test/**/*
 src/data/**/*
 src/monitor/config.json
-weagle
+weagle-bot
+weagle-bot.log
 dist
 config.json
 js/
+src/internalconfig.json

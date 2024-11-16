@@ -51,6 +51,8 @@ export class BinanceNewsMonitor {
     private interval: number
     private watch: Watch[]
     private solApi: Sol
+    private slippage: number
+    private priorityFeeX: number
     private tgBot: Telegram
     private logger: Logger
 
@@ -60,6 +62,8 @@ export class BinanceNewsMonitor {
         solEndpoint: string,
         tokenInfo: TokenInfo[],
         watch: Watch[],
+        slippage: number,
+        priorityFeeX: number,
         telegramToken: string,
     ) {
         this.logger = logger;
@@ -68,6 +72,8 @@ export class BinanceNewsMonitor {
         this.existingCoin = [];
         this.tokenInfos = tokenInfo;
         this.watch = watch;
+        this.slippage = slippage;
+        this.priorityFeeX = priorityFeeX;
         this.solApi = new Sol(solEndpoint);
         this.tgBot = new Telegram(telegramToken);
     }
@@ -84,19 +90,19 @@ export class BinanceNewsMonitor {
     
     // load old news
     public async init() {
-        this.logger.info(`initializing current articles...`);
         const articles = await this.getArticles();
+        let i = 0;
         for (const article of articles) {
             if (!this.existingArticleIds.includes(article.id)) {
                 this.existingArticleIds.push(article.id);
-
-                this.logger.info(`article ${article.id} loaded`);
+                i++;
             }
         }
+        this.logger.info(`${i} old articles are loaded.`);
     }
 
     private async check() {
-        this.logger.info("checking...");
+        this.logger.info("checking binance...");
 
         const articles = await this.getArticles();
         for (const article of articles) {
@@ -112,7 +118,7 @@ export class BinanceNewsMonitor {
                                         if (wc.symbol.toUpperCase() === tokenInfoUpper) {
                                             this.logger.info(`buying ${tokenInfoUpper} ${tokenInfo.ca} sol: ${wc.solAmount}sol`);
                                             try {
-                                                const txId = await this.solApi.buy(user.pk, tokenInfo.ca, wc.solAmount);
+                                                const txId = await this.solApi.buy(user.pk, tokenInfo.ca, wc.solAmount, this.priorityFeeX, this.slippage);
                                                 this.existingCoin.push(tokenInfoUpper);
 
                                                 try {

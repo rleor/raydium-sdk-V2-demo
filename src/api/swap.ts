@@ -44,10 +44,13 @@ export const fetchTokenAccountData = async (connection: Connection, owner: Keypa
   return tokenAccountData
 }
 
-export const apiSwap = async (connection: Connection, owner: Keypair, outputMint: string, solAmount: number): Promise<string> => {
+export const apiSwap = async (connection: Connection, owner: Keypair, outputMint: string, solAmount: number, priorityFeeX: number, slippage?: number): Promise<string> => {
   const inputMint = NATIVE_MINT.toBase58()
-  const slippage = 0.5 // in percent, for this example, 0.5 means 0.5%
   const txVersion: string = 'V0' // or LEGACY
+  if (!slippage) {
+    slippage = 1; // default
+  }
+  console.log("slippage", slippage);
   const isV0Tx = txVersion === 'V0'
 
   const [isInputSol, isOutputSol] = [inputMint === NATIVE_MINT.toBase58(), outputMint === NATIVE_MINT.toBase58()]
@@ -72,6 +75,7 @@ export const apiSwap = async (connection: Connection, owner: Keypair, outputMint
     success: boolean
     data: { default: { vh: number; h: number; m: number } }
   }>(`${API_URLS.BASE_HOST}${API_URLS.PRIORITY_FEE}`)
+  console.log(data);
 
   const { data: swapResponse } = await axios.get<SwapCompute>(
     `${
@@ -81,13 +85,16 @@ export const apiSwap = async (connection: Connection, owner: Keypair, outputMint
     }&txVersion=${txVersion}`
   )
 
+  const pf = Math.ceil(data.data.default.h * priorityFeeX);
+  console.log("priority fee:", pf);
+
   const { data: swapTransactions } = await axios.post<{
     id: string
     version: string
     success: boolean
     data: { transaction: string }[]
   }>(`${API_URLS.SWAP_HOST}/transaction/swap-base-in`, {
-    computeUnitPriceMicroLamports: String(data.data.default.h),
+    computeUnitPriceMicroLamports: String(pf),
     swapResponse,
     txVersion,
     wallet: owner.publicKey.toBase58(),

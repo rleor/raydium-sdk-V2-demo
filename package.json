@@ -28,6 +28,6 @@
     "build": "tsc",
     "clean": "tsc --build --clean",
     "dev": "ts-node",
-    "package": "yarn build && ncc build js/index.js -o dist/ && pkg dist/index.js --target=node18 --platform=linux --output=weagle"
+    "package": "yarn build && ncc build js/index.js -o dist/ && pkg dist/index.js --target=node18 --platform=win --output=weagle-bot"
   }
 }
